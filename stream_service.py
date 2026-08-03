@@ -1,17 +1,77 @@
+from fastapi import HTTPException
+from fastapi.responses import StreamingResponse
+import requests
+
+from client import (
+    session,
+    DEFAULT_TIMEOUT
+)
+
+from config import (
+    CHUNK_SIZE
+)
+
+from firebase_service import (
+    get_metadata,
+    get_parts_between
+)
+
+
+def stream_file(file_id: str, range_header: str | None):
+
+    metadata = get_metadata(file_id)
+
+    if metadata is None:
+        raise HTTPException(
+            status_code=404,
+            detail="File not found"
+        )
+
+    if not metadata.get("multipart"):
+        raise HTTPException(
+            status_code=400,
+            detail="Not a multipart file"
+        )
+
+    total_size = metadata["size"]
+
+    start, end = parse_range(
+        range_header,
+        total_size
+    )
+
+    parts = get_parts_between(
+        metadata["parts"],
+        start,
+        end
+    )
+
+    headers = {
+        "Content-Type": metadata.get(
+            "type",
+            "application/octet-stream"
+        ),
+        "Accept-Ranges": "bytes",
+        "Content-Range": f"bytes {start}-{end}/{total_size}",
+        "Content-Length": str(end - start + 1)
+    }
+
+    return StreamingResponse(
+        stream_generator(
+            parts,
+            start,
+            end
+        ),
+        status_code=206,
+        headers=headers
+    )
+
+
 def stream_generator(
     parts,
     global_start,
     global_end
 ):
-    """
-    Streams only the requested byte ranges from the
-    required multipart files.
-
-    Browser  ---> This server ---> static.pw.live
-
-    Memory usage stays very low because nothing is
-    buffered except the current chunk.
-    """
 
     current_start = global_start
 
@@ -63,3 +123,46 @@ def stream_generator(
 
         if current_start > global_end:
             break
+
+
+def parse_range(
+    range_header,
+    total_size
+):
+
+    if not range_header:
+        return 0, total_size - 1
+
+    if not range_header.startswith("bytes="):
+        raise HTTPException(
+            416,
+            "Invalid Range"
+        )
+
+    value = range_header[6:]
+
+    start_str, end_str = value.split("-")
+
+    if start_str == "":
+        raise HTTPException(
+            416,
+            "Suffix ranges unsupported"
+        )
+
+    start = int(start_str)
+
+    if end_str == "":
+        end = total_size - 1
+    else:
+        end = int(end_str)
+
+    start = max(start, 0)
+    end = min(end, total_size - 1)
+
+    if start > end:
+        raise HTTPException(
+            416,
+            "Invalid Range"
+        )
+
+    return start, end
