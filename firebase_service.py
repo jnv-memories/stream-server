@@ -58,14 +58,17 @@ def get_metadata(file_id):
 
     initialize()
 
-    doc = (
+    docs = (
         _db
         .collection(FIREBASE_COLLECTION)
-        .document(file_id)
-        .get()
+        .where("id", "==", file_id)
+        .limit(1)
+        .stream()
     )
 
-    if not doc.exists:
+    doc = next(docs, None)
+
+    if doc is None:
         return None
 
     data = doc.to_dict()

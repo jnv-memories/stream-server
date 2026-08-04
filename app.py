@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Header
+from fastapi import FastAPI, Header, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
@@ -61,7 +61,7 @@ def stream(
 
 # ---------- Root ----------
 
-@app.api_route("/", methods=["GET", "HEAD"])
+@app.get("/")
 def root():
 
     return JSONResponse(
