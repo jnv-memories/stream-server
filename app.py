@@ -62,8 +62,9 @@ def stream(
 # ---------- Root ----------
 
 @app.get("/")
-def root():
-
+def root(request: Request):
+    if request.method == "HEAD":
+        return Response(status_code=200)
     return JSONResponse(
         {
             "service": "Multipart Streaming Server",
