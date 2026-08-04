@@ -63,6 +63,8 @@ def stream(
 
 @app.api_route("/", methods=["GET", "HEAD"])
 def root():
+     if request.method == "HEAD":
+        return Response(status_code=200)
 
     return JSONResponse(
         {
