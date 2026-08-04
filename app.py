@@ -15,9 +15,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "*"
-        # Later replace with:
-        # "https://yourdomain.com"
+       "https://deep-bkl.web.app/"
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -63,7 +61,7 @@ def stream(
 
 # ---------- Root ----------
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 def root():
 
     return JSONResponse(
